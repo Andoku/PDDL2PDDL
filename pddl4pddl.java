@@ -55,6 +55,8 @@ public static void main(String[] args) throws Exception {
         }
 		if (args[0].equals(":equality")) {
 			transformEquality(domain, problem);
+		} else if (args[0].equals(":disjunctive-preconditions")) {
+			transformDisjunctivePreconditions(domain, problem);
 		} else {
 			System.err.println("Invalid command line");
 		}
@@ -66,22 +68,37 @@ public static void main(String[] args) throws Exception {
     }
 }
 
-static void transformEquality(PDDLObject domain, PDDLObject problem) throws InvalidExpException {
-	
-	//for (Iterator<RequireKey> iter = problem.requirementsIterator(); iter.hasNext(); ) {
-	//	
-	//}
+static void transformDisjunctivePreconditions(PDDLObject domain, PDDLObject problem) {
+	// change requirments
+	// create unique name goal_predicate
+	String goal_predicate_name = "goal_predicate"; // This shpuld be unique
 	
 	List<InitEl> init = problem.getInit();
-	AtomicFormula prdct1 = new AtomicFormula("eq");
+	AtomicFormula goal_predicate = new AtomicFormula(goal_predicate_name);
+	domain.addPredicate(goal_predicate);
+	
+	 
+}
+
+static void transformEquality(PDDLObject domain, PDDLObject problem) throws InvalidExpException {
+	
+	// change requirments:
+	//for (Iterator<RequireKey> iter = problem.requirementsIterator(); iter.hasNext(); ) {
+	//}
+	// create unique name eq_predicate
+	String eq_predicate = "eq"; // This shpuld be unique
+	
+	AtomicFormula eq_prdct = new AtomicFormula(eq_predicate);
 	Constant o1 = new Constant("?o1");
 	Constant o2 = new Constant("?o2");
-	prdct1.add(o1);
-	prdct1.add(o2);
-	domain.addPredicate(prdct1);	
+	eq_prdct.add(o1);
+	eq_prdct.add(o2);
+	domain.addPredicate(eq_prdct);
+	
+	List<InitEl> init = problem.getInit();	
 	for (Iterator<Constant> iter = problem.constantsIterator(); iter.hasNext(); ) {
 		Constant object = iter.next();
-		AtomicFormula predicate = new AtomicFormula("eq");
+		AtomicFormula predicate = new AtomicFormula(eq_predicate);
 		predicate.add(object);
 		predicate.add(object);
 		init.add(predicate);
@@ -90,11 +107,11 @@ static void transformEquality(PDDLObject domain, PDDLObject problem) throws Inva
 	for (Iterator<ActionDef> iter = domain.actionsIterator(); iter.hasNext(); ) {
 		Action action = (Action) iter.next();
 		System.out.println(action.getPrecondition().toString());
-		replaceEqulityOperator(action.getPrecondition());
+		replaceEqualityOperator(action.getPrecondition(), eq_predicate);
 	}
 }
 
-static void replaceEqulityOperator(Exp e) throws InvalidExpException {
+static void replaceEqualityOperator(Exp e, String eq_predicate) throws InvalidExpException {
 	switch (e.getExpID()) {
     case AND:
         AndExp andExp = (AndExp) e;
@@ -103,13 +120,13 @@ static void replaceEqulityOperator(Exp e) throws InvalidExpException {
 				FCompExp fcomp3 = (FCompExp) andExp.get(i);
 				if (fcomp3.getOp().equals(Comp.EQUAL) && fcomp3.getArg1().getExpID().equals(ExpID.TERM)
 													  && fcomp3.getArg2().getExpID().equals(ExpID.TERM)) {											
-					AtomicFormula predicate = new AtomicFormula("eq");
+					AtomicFormula predicate = new AtomicFormula(eq_predicate);
 					predicate.add(fcomp3.getArg1());
 					predicate.add(fcomp3.getArg2());
 					andExp.set(i, predicate);
 				}
 			} else {
-				replaceEqulityOperator(andExp.get(i));
+				replaceEqualityOperator(andExp.get(i), eq_predicate);
 			}
 		}
         break;
@@ -121,13 +138,13 @@ static void replaceEqulityOperator(Exp e) throws InvalidExpException {
 			FCompExp fcomp1 = (FCompExp) forall.getExp();
 			if (fcomp1.getOp().equals(Comp.EQUAL) && fcomp1.getArg1().getExpID().equals(ExpID.TERM)
 												  && fcomp1.getArg2().getExpID().equals(ExpID.TERM)) {											
-				AtomicFormula predicate = new AtomicFormula("eq");
+				AtomicFormula predicate = new AtomicFormula(eq_predicate);
 				predicate.add(fcomp1.getArg1());
 				predicate.add(fcomp1.getArg2());
 				forall.setExp(predicate);
 			}
 		} else {
-			replaceEqulityOperator(forall.getExp());
+			replaceEqualityOperator(forall.getExp(), eq_predicate);
 		}
 		break;
 	case OR:
@@ -137,13 +154,13 @@ static void replaceEqulityOperator(Exp e) throws InvalidExpException {
 				FCompExp fcomp4 = (FCompExp) orExp.get(i);
 				if (fcomp4.getOp().equals(Comp.EQUAL) && fcomp4.getArg1().getExpID().equals(ExpID.TERM)
 													  && fcomp4.getArg2().getExpID().equals(ExpID.TERM)) {											
-					AtomicFormula predicate = new AtomicFormula("eq");
+					AtomicFormula predicate = new AtomicFormula(eq_predicate);
 					predicate.add(fcomp4.getArg1());
 					predicate.add(fcomp4.getArg2());
 					orExp.set(i, predicate);
 				}
 			} else {
-				replaceEqulityOperator(orExp.get(i));
+				replaceEqualityOperator(orExp.get(i), eq_predicate);
 			}
 		}
 		break;
@@ -153,13 +170,13 @@ static void replaceEqulityOperator(Exp e) throws InvalidExpException {
 			FCompExp fcomp2 = (FCompExp) notExp.getExp();
 			if (fcomp2.getOp().equals(Comp.EQUAL) && fcomp2.getArg1().getExpID().equals(ExpID.TERM)
 												  && fcomp2.getArg2().getExpID().equals(ExpID.TERM)) {											
-				AtomicFormula predicate = new AtomicFormula("eq");
+				AtomicFormula predicate = new AtomicFormula(eq_predicate);
 				predicate.add(fcomp2.getArg1());
 				predicate.add(fcomp2.getArg2());
 				notExp.setExp(predicate);
 			}
 		} else {
-			replaceEqulityOperator(notExp.getExp());
+			replaceEqualityOperator(notExp.getExp(), eq_predicate);
 		}
         break;
     default:
