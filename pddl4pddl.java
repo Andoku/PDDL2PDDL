@@ -19,6 +19,10 @@ import pddl4j.exp.InitEl;
 import pddl4j.exp.Literal;
 import pddl4j.exp.NotAtomicFormula;
 import pddl4j.exp.NotExp;
+import pddl4j.exp.WhenExp;
+import pddl4j.exp.time.TimedExp;
+import pddl4j.exp.ImplyExp;
+import pddl4j.exp.DerivedPredicate;
 import pddl4j.exp.term.Substitution;
 import pddl4j.exp.term.Variable;
 import pddl4j.exp.term.Term;
@@ -93,18 +97,82 @@ static void transformDisjunctivePreconditions(PDDLObject domain, PDDLObject prob
 			domain.addAction(action);
 		}
 	}
+	 
+	List<Action> newActions = new ArrayList<Action>();
+	for (Iterator<ActionDef> iter = domain.actionsIterator(); iter.hasNext(); ) {
+		ActionDef action = iter.next();
+		Exp precondition = ((Action) action).getPrecondition();
+		if (hasExp(precondition, ExpID.OR)) {
+			precondition = precondition.toDisjunctiveNormalForm();
+			ListExp listExp = (ListExp) precondition;
+			for (int i = 0; i < listExp.size(); i++) {
+				Exp disjunct = listExp.get(i);
+				String action_name = "action_name" + i + i; //should be unique
+				Action new_action = new Action(action_name);
+				new_action.setEffect(((Action) action).getEffect());
+				new_action.setPrecondition(disjunct);
+				new_action.setParameters(action.getParameters());
+				newActions.add(new_action);
+			}
+			iter.remove();
+		}
+	}
+	for (Action newAction : newActions)
+		domain.addAction(newAction);
 }
 
 static boolean hasExp(Exp e, ExpID id) {
+	if (e.getExpID().equals(id))
+		return true;
+	
+	switch (e.getExpID()) {
+    case AND: case OR:
+        ListExp listExp = (ListExp) e;
+		for (int i = 0; i < listExp.size(); i++) {
+			hasExp(listExp.get(i), id);
+		}
+        break;
+	case FORALL: case EXIST:
+		QuantifiedExp quantr = (QuantifiedExp) e;
+		hasExp(quantr.getExp(), id);
+		break;
+	case WHEN:
+		WhenExp whenExp = (WhenExp) e;
+		hasExp(whenExp.getCondition(), id);
+		hasExp(whenExp.getEffect(), id);
+		break;
+    case NOT:
+        NotExp notExp = (NotExp) e;
+		hasExp(notExp.getExp(), id);
+        break;
+	case TIMED_EXP:
+		TimedExp timedExp = (TimedExp) e;
+		hasExp(timedExp.getExp(), id);
+		break;
+	case IMPLY:
+		ImplyExp implyExp = (ImplyExp) e;
+		hasExp(implyExp.getHead(), id);
+		hasExp(implyExp.getBody(), id);
+		break;
+	case DERIVED_PREDICATE:
+		DerivedPredicate derivedPredicate = (DerivedPredicate) e;
+		hasExp(derivedPredicate.getHead(), id);
+		hasExp(derivedPredicate.getBody(), id);
+		break;
+	case F_COMP: case ASSIGN_OP: case COND_EXP: 
+	case ATOMIC_FORMULA: case METRIC_EXP: case TERM:
+		break;
+	}
 	return false;
 }
+
 
 static void transformEquality(PDDLObject domain, PDDLObject problem) throws InvalidExpException {
 	
 	// change requirments:
 	//for (Iterator<RequireKey> iter = problem.requirementsIterator(); iter.hasNext(); ) {
 	//}
-	// create unique name eq_predicate
+
 	String eq_predicate = "eq"; // This shpuld be unique
 	
 	AtomicFormula eq_prdct = new AtomicFormula(eq_predicate);
@@ -187,6 +255,7 @@ static void replaceEqualityOperator(Exp e, String eq_predicate) throws InvalidEx
 			predicate.add(fcomp2.getArg2());
 			//notExp.setExp(predicate);
 		}
+		break;
 	case ATOMIC_FORMULA:        
         break;
     default:
