@@ -1,0 +1,44 @@
+<project name="PDDL2PDDL" default="build" basedir=".">
+
+	<property name="version" value="v1.0" />
+	<property name="src_dir" value="${basedir}/src" />
+	<property name="class_dir" value="${basedir}/classes" />
+	<property name="lib_dir" value="${basedir}/lib" />	
+	<property name="dev_dir" value="${basedir}/dev" />
+	
+	<property name="javacc_home" value="${dev_dir}/javacc/" />
+	<property name="javacc_target" value="src/pddl4j/lexer/Lexer" />
+	<property name="javacc_output" value="src/pddl4j/lexer/" />
+	
+	<property name="pddl2pddl" value="pddl2pddl" />
+	<property name="pddl4j.lexer" value="pddl4j/lexer" />
+			
+
+	
+	
+	<mkdir dir="${class_dir}"/>
+	<mkdir dir="${lib_dir}"/>
+	
+	<target name="build" depends="pddl2pddl" description="Build PDDL4J Project packages" >
+		<echo>PDDL2PDDL Project is successfully built</echo>
+	</target>
+	
+	
+	
+	<target name="pddl2pddl"  description="Build pddl2pddl package">
+		<echo>Build pddl4j.parser package</echo>
+			<javac 
+				classpath="${class_dir}" 
+				srcdir="${src_dir}" 
+				destdir="${class_dir}" 
+				deprecation="yes"
+				includes="**/*.java" 
+				source="1.6" 
+				debug="on"
+			/>
+	</target>		
+
+	
+	
+</project>
+
